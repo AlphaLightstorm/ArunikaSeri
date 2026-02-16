@@ -153,23 +153,22 @@
 
   <script>
     /***** CONFIGURE FIREBASE *****/
-    // Replace with your Firebase web app config
-    const firebaseConfig = {
-      const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXX",
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCW2FCqNGxiv67BEPfZ2Xw29A_vNM-a2uE",
   authDomain: "arunikaseri.firebaseapp.com",
   projectId: "arunikaseri",
-  storageBucket: "arunikaseri.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  storageBucket: "arunikaseri.appspot.com",   // corrected bucket name
+  messagingSenderId: "762408001942",
+  appId: "1:762408001942:web:7d45097875281e8545fdb7",
+  measurementId: "G-HFMT3D9L04"               // optional, safe to keep
 };
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
 
-    // Document id to store public data
-    const PUBLIC_DOC = 'public'; // collection 'linkhubs' doc 'public'
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+  </script>
 
     /***** UI ELEMENTS *****/
     const listEl = document.getElementById('list');
