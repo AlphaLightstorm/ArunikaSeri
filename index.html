@@ -6,7 +6,7 @@
   <title>Link Hub</title>
   <meta name="description" content="Professional link hub for creators" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -153,22 +153,24 @@
 
   <script>
     /***** CONFIGURE FIREBASE *****/
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCW2FCqNGxiv67BEPfZ2Xw29A_vNM-a2uE",
-  authDomain: "arunikaseri.firebaseapp.com",
-  projectId: "arunikaseri",
-  storageBucket: "arunikaseri.appspot.com",   // corrected bucket name
-  messagingSenderId: "762408001942",
-  appId: "1:762408001942:web:7d45097875281e8545fdb7",
-  measurementId: "G-HFMT3D9L04"               // optional, safe to keep
-};
+    // Your web app's Firebase configuration (inserted)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCW2FCqNGxiv67BEPfZ2Xw29A_vNM-a2uE",
+      authDomain: "arunikaseri.firebaseapp.com",
+      projectId: "arunikaseri",
+      storageBucket: "arunikaseri.appspot.com",
+      messagingSenderId: "762408001942",
+      appId: "1:762408001942:web:7d45097875281e8545fdb7",
+      measurementId: "G-HFMT3D9L04"
+    };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-  </script>
+    // Initialize Firebase (compat)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Document id to store public data
+    const PUBLIC_DOC = 'public'; // collection 'linkhubs' doc 'public'
 
     /***** UI ELEMENTS *****/
     const listEl = document.getElementById('list');
@@ -565,8 +567,8 @@ const db = firebase.firestore();
       - Upload images to your repo under /assets and deploy (Netlify or GitHub Pages).
       - Example image URL: https://<your-site>.netlify.app/assets/avatar.png
       - In Firestore rules, restrict writes to your admin UID:
-        allow write: if request.auth != null && request.auth.uid == "0yILovPyRQUJFJYwQtgMBwirrQy2";
-      - Replace firebaseConfig above with your project's config.
+        allow write: if request.auth != null && request.auth.uid == "YOUR_ADMIN_UID";
+      - Replace firebaseConfig above with your project's config (already inserted).
     */
   </script>
 </body>
