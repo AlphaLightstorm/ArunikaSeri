@@ -158,7 +158,9 @@
       </div>
     </div>
   </div>
-
+    <div id="links" class="links-grid">
+  <div class="notice">Loading links…</div>
+</div>
   <script>
     /***** CONFIGURE FIREBASE *****/
     // Your web app's Firebase configuration (inserted)
@@ -578,6 +580,51 @@
         allow write: if request.auth != null && request.auth.uid == "YOUR_ADMIN_UID";
       - Replace firebaseConfig above with your project's config (already inserted).
     */
+    let allLinks = [];
+
+async function loadLinks() {
+  const container = document.getElementById('links');
+  try {
+    const res = await fetch('/.netlify/functions/get-links');
+    if (!res.ok) throw new Error('Failed to fetch links');
+    const links = await res.json();
+    allLinks = Array.isArray(links) ? links : [];
+    renderLinks(allLinks);
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<div class="notice">Error loading links. Check function logs in Netlify.</div>';
+  }
+}
+
+function renderLinks(list) {
+  const container = document.getElementById('links');
+  if (!list.length) {
+    container.innerHTML = '<div class="notice">No links yet. Add some from the admin page.</div>';
+    return;
+  }
+  container.innerHTML = list.map(l => {
+    const thumb = l.thumbnail ? escapeHtml(l.thumbnail) : '/assets/default.png';
+    const title = escapeHtml(l.title || l.url);
+    const url = escapeHtml(l.url || '#');
+    const tags = (l.tags || []).map(t => escapeHtml(t)).join(', ');
+    return `
+      <article class="card">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">
+          <img class="thumb" src="${thumb}" alt="${title}">
+        </a>
+        <a class="title" href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>
+        <div class="meta">${tags || ''}</div>
+      </article>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+document.addEventListener('DOMContentLoaded', loadLinks);
+
   </script>
 </body>
 </html>
