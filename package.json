@@ -1,0 +1,11 @@
+{
+  "name": "arunikaseri",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "netlify dev"
+  },
+  "dependencies": {
+    "pg": "^8.11.0"
+  }
+}
