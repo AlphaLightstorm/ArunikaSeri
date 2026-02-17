@@ -1,20 +1,27 @@
-// netlify/functions/get-links.js
-const { Client } = require('pg');
+// /netlify/functions/get-links.js
+import { Client } from 'pg';
 
-exports.handler = async () => {
-  const client = new Client({ connectionString: process.env.NETLIFY_DATABASE_URL });
+export async function handler(event, context) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+
   try {
     await client.connect();
-    const res = await client.query('SELECT id, title, url, thumbnail, tags, clicks, created_at FROM links ORDER BY created_at DESC');
+    const result = await client.query('SELECT * FROM links ORDER BY created_at DESC');
     await client.end();
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(res.rows)
+      body: JSON.stringify(result.rows)
     };
   } catch (err) {
-    console.error('get-links error', err);
-    try { await client.end(); } catch (_) {}
-    return { statusCode: 500, body: JSON.stringify({ error: 'Database read failed' }) };
+    console.error('DB error', err);
+    if (client) await client.end().catch(()=>{});
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to load links' })
+    };
   }
-};
+}
