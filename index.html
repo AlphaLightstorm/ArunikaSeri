@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Link Hub</title>
+  <meta name="description" content="Professional link hub for creators" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <style>
+    :root{
+      --bg:#f6fbff; --card:#ffffff; --muted:#6b7b8c; --accent:#1e90ff; --accent-2:#00b4ff;
+      --glass: rgba(30,144,255,0.06); --radius:18px; --max-width:880px; --shadow: 0 18px 48px rgba(20,40,80,0.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background:linear-gradient(180deg,#f8fbff 0%,#eef7ff 100%); color:#0b1b2b;
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .wrap{ width:100%; max-width:var(--max-width); background:var(--card); border-radius:20px; padding:18px; box-shadow:var(--shadow); border:1px solid rgba(15,30,60,0.04); }
+    header{ display:flex; gap:14px; align-items:center; margin-bottom:14px; }
+    .avatar{ width:96px; height:96px; border-radius:14px; overflow:hidden; flex:0 0 96px; border:1px solid rgba(30,144,255,0.12); background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:28px; color:white; position:relative; }
+    .avatar img{ width:100%; height:100%; object-fit:cover; display:block }
+    .avatar .edit{ position:absolute; right:8px; bottom:8px; background:rgba(255,255,255,0.95); color:var(--accent); border-radius:10px; padding:6px 8px; font-size:13px; cursor:pointer; border:1px solid rgba(15,30,60,0.04); }
+    .profile{ flex:1; min-width:0; }
+    .name{ font-size:20px; font-weight:700; margin-bottom:6px; }
+    .tagline{ color:var(--muted); font-size:13px; margin-bottom:6px; }
+    .profile .desc{ color:var(--muted); font-size:13px; margin-top:6px; }
+    .controls{ display:flex; gap:8px; align-items:center; }
+    .btn{ background:transparent; border:1px solid rgba(15,30,60,0.06); color:var(--muted); padding:8px 12px; border-radius:12px; font-size:14px; cursor:pointer; display:inline-flex; gap:8px; align-items:center; }
+    .btn.primary{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; border:none; font-weight:700; }
+    main{ display:block; margin-top:8px; max-height:64vh; overflow:auto; padding-right:6px; }
+    .links-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:12px}
+    .card{display:flex;flex-direction:column;background:#fff;border:1px solid #e9edf3;border-radius:10px;padding:10px;box-shadow:0 1px 0 rgba(16,24,40,0.02);cursor:pointer}
+    .card .thumb{width:100%;height:130px;object-fit:cover;border-radius:6px;background:#f0f2f6;overflow:hidden;display:block}
+    .card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .title{display:block;margin-top:10px;font-weight:600;color:#111;text-decoration:none}
+    .meta{margin-top:8px;color:#6b7280;font-size:13px}
+    .notice{padding:12px;border-radius:8px;background:#fff;border:1px dashed #e6e9ef;color:#6b7280}
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; background:linear-gradient(180deg, rgba(10,20,30,0.35), rgba(10,20,30,0.35)); padding:20px; }
+    .modal.open{ display:flex }
+    .panel{ width:100%; max-width:720px; background:var(--card); border-radius:14px; padding:18px; border:1px solid rgba(15,30,60,0.04); box-shadow:0 12px 30px rgba(10,20,30,0.08); }
+    .field{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
+    label{ color:var(--muted); font-size:13px }
+    input[type="text"], input[type="url"], textarea{ padding:12px 14px; border-radius:10px; border:1px solid rgba(15,30,60,0.06); background:transparent; color:inherit; outline:none; font-size:15px; }
+    textarea{ min-height:80px; resize:vertical; }
+    .row{ display:flex; gap:10px; justify-content:flex-end; margin-top:6px }
+    .small{ font-size:13px; color:var(--muted) }
+    .adminBadge{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; padding:6px 10px; border-radius:999px; font-weight:700; font-size:13px; }
+    @media (max-width:720px){ .avatar{ width:80px; height:80px; flex:0 0 80px } .card .thumb{ height:110px } .name{ font-size:18px } }
+    /* Mobile bottom sheet modal */
+    @media (max-width:520px){
+      .panel { border-radius:12px 12px 0 0; width:100%; max-width:100%; margin:0; position:fixed; bottom:0; left:0; right:0; padding:16px; }
+      .btn { padding:12px 14px; font-size:16px; border-radius:12px; }
+      input[type="text"], input[type="url"], textarea { font-size:16px; padding:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Link hub">
+    <header>
+      <div class="avatar" id="avatar">
+        <img id="avatarImg" alt="Profile" style="display:none" />
+        <div id="avatarInitials">AL</div>
+        <div class="edit" id="avatarEdit" title="Edit avatar URL">Edit</div>
+      </div>
+
+      <div class="profile">
+        <div class="name" id="displayName">Your Name</div>
+        <div class="tagline" id="tagline">Creator • TikTok Monetization</div>
+        <div class="desc" id="description">Short description or call to action goes here.</div>
+      </div>
+
+      <div class="controls" id="controls">
+        <button class="btn" id="importBtn" title="Import links">Import</button>
+        <button class="btn" id="exportBtn" title="Export links">Export</button>
+        <button class="btn" id="addBtn" title="Add link">Add Link</button>
+        <button class="btn primary" id="editProfile">Edit Profile</button>
+        <button class="btn" id="adminBtn">Admin</button>
+      </div>
+    </header>
+
+    <main id="list" aria-live="polite">
+      <div id="links" class="links-grid">
+        <div class="notice">Loading links…</div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="small">Light blue theme • Mobile-first</div>
+      <div class="small">Public read • Admin edits via Firebase</div>
+    </footer>
+  </div>
+
+  <!-- Link Editor Modal (used for Add / Edit) -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="panel" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong id="modalTitle">Edit Link</strong>
+        <button class="btn" id="closeModal">Close</button>
+      </div>
+
+      <div class="field">
+        <label for="labelInput">Button Label</label>
+        <input id="labelInput" type="text" placeholder="e.g., Support Me" />
+      </div>
+
+      <div class="field">
+        <label for="urlInput">URL</label>
+        <input id="urlInput" type="url" placeholder="https://example.com" />
+      </div>
+
+      <div class="field">
+        <label for="thumbUrlInput">Thumbnail Image URL</label>
+        <input id="thumbUrlInput" type="url" placeholder="https://yoursite.netlify.app/assets/thumb1.jpg" />
+        <div id="thumbPreview" style="margin-top:8px"></div>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="deleteLink" style="display:none">Delete</button>
+        <button class="btn primary" id="saveLink">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div class="modal" id="adminModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="panel" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Admin Sign In</strong>
+        <button class="btn" id="closeAdmin">Close</button>
+      </div>
+
+      <div class="field">
+        <label for="adminEmail">Email</label>
+        <input id="adminEmail" type="text" placeholder="admin@example.com" />
+      </div>
+      <div class="field">
+        <label for="adminPassword">Password</label>
+        <input id="adminPassword" type="password" placeholder="Your password" />
+      </div>
+
+      <div class="row">
+        <button class="btn" id="adminSignOut" style="display:none">Sign Out</button>
+        <button class="btn primary" id="adminSignIn">Sign In</button>
+      </div>
+      <div style="margin-top:12px;color:var(--muted);font-size:13px">
+        Tip: Upload images to your repo under assets and paste the public URL here.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***** CONFIGURE FIREBASE *****/
+    const firebaseConfig = {
+      apiKey: "AIzaSyCW2FCqNGxiv67BEPfZ2Xw29A_vNM-a2uE",
+      authDomain: "arunikaseri.firebaseapp.com",
+      projectId: "arunikaseri",
+      storageBucket: "arunikaseri.appspot.com",
+      messagingSenderId: "762408001942",
+      appId: "1:762408001942:web:7d45097875281e8545fdb7",
+      measurementId: "G-HFMT3D9L04"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    /***** UI ELEMENTS *****/
+    const listEl = document.getElementById('list');
+    const modal = document.getElementById('modal');
+    const labelInput = document.getElementById('labelInput');
+    const urlInput = document.getElementById('urlInput');
+    const thumbUrlInput = document.getElementById('thumbUrlInput');
+    const thumbPreview = document.getElementById('thumbPreview');
+    const modalTitle = document.getElementById('modalTitle');
+    const saveLinkBtn = document.getElementById('saveLink');
+    const deleteLinkBtn = document.getElementById('deleteLink');
+    const closeModalBtn = document.getElementById('closeModal');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const editProfileBtn = document.getElementById('editProfile');
+    const addBtn = document.getElementById('addBtn');
+    const adminBtn = document.getElementById('adminBtn');
+
+    const displayName = document.getElementById('displayName');
+    const tagline = document.getElementById('tagline');
+    const description = document.getElementById('description');
+    const avatarImg = document.getElementById('avatarImg');
+    const avatarInitials = document.getElementById('avatarInitials');
+    const avatarEdit = document.getElementById('avatarEdit');
+
+    const adminModal = document.getElementById('adminModal');
+    const adminEmail = document.getElementById('adminEmail');
+    const adminPassword = document.getElementById('adminPassword');
+    const adminSignInBtn = document.getElementById('adminSignIn');
+    const adminSignOutBtn = document.getElementById('adminSignOut');
+    const closeAdminBtn = document.getElementById('closeAdmin');
+
+    /***** STATE *****/
+    let currentEditId = null;
+    let allLinks = [];
+
+    /***** Utilities *****/
+    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    function renderThumbPreview(url){
+      if(!url){
+        thumbPreview.innerHTML = '<div style="color:var(--muted);font-size:13px">No thumbnail selected</div>';
+        return;
+      }
+      thumbPreview.innerHTML = `<img src="${escapeHtml(url)}" style="width:160px;height:100px;object-fit:cover;border-radius:8px;border:1px solid rgba(15,30,60,0.04)" alt="thumb preview" loading="lazy" />`;
+    }
+
+    /***** Admin helpers *****/
+    function isAdmin(){ return sessionStorage.getItem('isAdmin') === '1'; }
+    function updateAdminUI(){
+      const admin = isAdmin();
+      document.querySelectorAll('.icon[data-action="edit"]').forEach(el => el.style.display = admin ? 'inline-grid' : 'none');
+      deleteLinkBtn.style.display = admin ? 'inline-block' : 'none';
+      addBtn.style.display = admin ? 'inline-flex' : 'none';
+      editProfileBtn.style.display = admin ? 'inline-flex' : 'none';
+      avatarEdit.style.display = admin ? 'block' : 'none';
+      adminSignOutBtn.style.display = admin ? 'inline-flex' : 'none';
+      adminSignInBtn.style.display = admin ? 'none' : 'inline-flex';
+      if(admin && !document.getElementById('adminBadge')){
+        const b = document.createElement('div'); b.id='adminBadge'; b.className='adminBadge'; b.textContent='ADMIN'; document.querySelector('.controls').appendChild(b);
+      } else if(!admin && document.getElementById('adminBadge')){
+        document.getElementById('adminBadge').remove();
+      }
+    }
+
+    /***** Modal open/close *****/
+    function openEditor(id){
+      currentEditId = id || null;
+      modalTitle.textContent = id ? 'Edit Link' : 'New Link';
+      if(id){
+        const item = allLinks.find(x => String(x.id) === String(id)) || {};
+        labelInput.value = item.title || item.label || '';
+        urlInput.value = item.url || '';
+        thumbUrlInput.value = item.thumbnail || item.thumb || '';
+        renderThumbPreview(item.thumbnail || item.thumb || '');
+        deleteLinkBtn.style.display = isAdmin() ? 'inline-block' : 'none';
+      } else {
+        labelInput.value = '';
+        urlInput.value = '';
+        thumbUrlInput.value = '';
+        renderThumbPreview('');
+        deleteLinkBtn.style.display = 'none';
+      }
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+      labelInput.focus();
+    }
+    function closeEditor(){
+      currentEditId = null;
+      thumbUrlInput.value = '';
+      thumbPreview.innerHTML = '';
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+    }
+
+    closeModalBtn.addEventListener('click', closeEditor);
+    modal.addEventListener('click', (e) => { if(e.target === modal) closeEditor(); });
+
+    /***** Load public links from Netlify function *****/
+    async function loadLinks(){
+      const container = document.getElementById('links');
+      try {
+        const res = await fetch('/.netlify/functions/get-links');
+        if(!res.ok) throw new Error('Failed to fetch links');
+        const data = await res.json();
+        allLinks = Array.isArray(data) ? data : [];
+        renderLinks(allLinks);
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = '<div class="notice">Error loading links. Check function logs.</div>';
+      }
+    }
+
+    /***** Unified render that matches original styling and behavior *****/
+    function renderLinks(list){
+      const container = document.getElementById('links');
+      if(!list || !list.length){
+        container.innerHTML = '<div class="notice">No links yet. Add some from the admin page.</div>';
+        return;
+      }
+      container.innerHTML = list.map(l => {
+        const thumbHtml = l.thumbnail
+          ? `<div class="thumb"><img src="${escapeHtml(l.thumbnail)}" alt="${escapeHtml(l.title)}" loading="lazy" /></div>`
+          : `<div class="thumb"><div class="placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;font-weight:700;color:var(--accent)">${escapeHtml((l.title || l.url || '').slice(0,2).toUpperCase())}</div></div>`;
+        const title = escapeHtml(l.title || l.label || l.url);
+        const url = escapeHtml(l.url || '#');
+        const clicks = typeof l.clicks !== 'undefined' ? l.clicks : 0;
+        return `
+          <div class="card" data-id="${escapeHtml(l.id)}">
+            ${thumbHtml}
+            <a class="title" href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>
+            <div class="meta">${escapeHtml((l.tags || []).join(', ') || '')}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+              <div class="small" style="color:var(--muted)">Clicks: ${clicks}</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <div class="icon" data-action="copy" title="Copy URL">📋</div>
+                <div class="icon" data-action="edit" title="Edit" style="display:none">✏️</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Attach handlers
+      container.querySelectorAll('.card').forEach(card => {
+        const id = card.dataset.id;
+        card.addEventListener('click', (e) => {
+          const action = e.target.closest('[data-action]')?.dataset.action;
+          if(action === 'copy'){
+            const item = allLinks.find(x => String(x.id) === String(id));
+            if(item) navigator.clipboard.writeText(item.url || '');
+            e.stopPropagation();
+            const el = card.querySelector('.icon[data-action="copy"]');
+            if(el){ el.textContent = '✅'; setTimeout(()=>el.textContent='📋',900); }
+            return;
+          }
+          if(action === 'edit'){
+            if(!isAdmin()) return alert('Admin only');
+            openEditor(id);
+            e.stopPropagation();
+            return;
+          }
+          const link = allLinks.find(x => String(x.id) === String(id));
+          if(link && link.url){
+            window.open(link.url, '_blank', 'noopener');
+            // Optionally increment clicks client-side (not persisted)
+            const el = card.querySelector('.small');
+            if(el){ /* visual only */ }
+          }
+        });
+      });
+
+      // Show edit icons for admins
+      if(isAdmin()){
+        container.querySelectorAll('.icon[data-action="edit"]').forEach(el => el.style.display = 'inline-grid');
+      }
+    }
+
+    /***** Add / Update / Delete handlers (Netlify functions) *****/
+    // Save (create or update)
+    saveLinkBtn.addEventListener('click', async () => {
+      if (!isAdmin()) return alert('Admin only');
+
+      const label = labelInput.value.trim() || 'Untitled';
+      let url = urlInput.value.trim();
+      if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+      const thumbUrl = thumbUrlInput.value.trim();
+      const tags = []; // extend if you add tags input
+
+      if (!url) return alert('Please enter a URL');
+
+      saveLinkBtn.disabled = true;
+      saveLinkBtn.textContent = 'Saving...';
+
+      try {
+        // If editing existing, call update endpoint; else add
+        const payload = { title: label, url, thumbnail: thumbUrl, tags };
+        const endpoint = currentEditId ? '/.netlify/functions/update-link' : '/.netlify/functions/add-link';
+        if (currentEditId) payload.id = currentEditId;
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Save failed');
+
+        closeEditor();
+        await loadLinks();
+      } catch (err) {
+        console.error('Save error', err);
+        alert('Error saving link: ' + (err.message || 'Unknown'));
+      } finally {
+        saveLinkBtn.disabled = false;
+        saveLinkBtn.textContent = 'Save';
+      }
+    });
+
+    // Delete
+    deleteLinkBtn.addEventListener('click', async () => {
+      if (!isAdmin()) return alert('Admin only');
+      if (!currentEditId) return;
+
+      if (!confirm('Delete this link?')) return;
+
+      deleteLinkBtn.disabled = true;
+      deleteLinkBtn.textContent = 'Deleting...';
+
+      try {
+        const res = await fetch('/.netlify/functions/delete-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentEditId })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Delete failed');
+
+        closeEditor();
+        await loadLinks();
+      } catch (err) {
+        console.error('Delete error', err);
+        alert('Error deleting link: ' + (err.message || 'Unknown'));
+      } finally {
+        deleteLinkBtn.disabled = false;
+        deleteLinkBtn.textContent = 'Delete';
+      }
+    });
+
+    /***** Add button opens modal for new link *****/
+    addBtn.addEventListener('click', () => {
+      if(!isAdmin()) return alert('Admin only');
+      openEditor(null);
+    });
+
+    /***** Profile edit and avatar *****/
+    editProfileBtn.addEventListener('click', async () => {
+      if(!isAdmin()) return alert('Admin only');
+      const name = prompt('Display name', displayName.textContent) || displayName.textContent;
+      const tag = prompt('Tagline', tagline.textContent) || tagline.textContent;
+      const desc = prompt('Short description', description.textContent) || description.textContent;
+      const avatarUrl = prompt('Avatar image URL (paste GitHub/Netlify URL)', '') || '';
+      const profile = { name, tag, desc, avatarUrl };
+      // Save profile locally (client-only) and update UI
+      localStorage.setItem('linkhub_profile_v3', JSON.stringify(profile));
+      loadProfileToUI();
+      // Optionally send profile to a server endpoint if you want persistence
+    });
+
+    avatarEdit.addEventListener('click', () => {
+      if(!isAdmin()) return alert('Admin only');
+      const avatarUrl = prompt('Avatar image URL (paste GitHub/Netlify URL)', '') || '';
+      const p = JSON.parse(localStorage.getItem('linkhub_profile_v3') || '{}');
+      p.avatarUrl = avatarUrl;
+      localStorage.setItem('linkhub_profile_v3', JSON.stringify(p));
+      loadProfileToUI();
+    });
+
+    function loadProfileToUI(){
+      const p = JSON.parse(localStorage.getItem('linkhub_profile_v3') || '{}');
+      if(p.name) displayName.textContent = p.name;
+      if(p.tag) tagline.textContent = p.tag;
+      if(p.desc) description.textContent = p.desc;
+      if(p.avatarUrl){
+        avatarImg.src = p.avatarUrl;
+        avatarImg.style.display = 'block';
+        avatarInitials.style.display = 'none';
+      } else {
+        avatarImg.style.display = 'none';
+        avatarInitials.style.display = (p.initials || (displayName.textContent.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase())) || 'AL';
+      }
+    }
+
+    /***** Export / Import (client-only) *****/
+    exportBtn.addEventListener('click', () => {
+      const payload = { profile: JSON.parse(localStorage.getItem('linkhub_profile_v3') || '{}'), links: allLinks };
+      navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
+      exportBtn.textContent = 'Copied';
+      setTimeout(()=>exportBtn.textContent='Export',1200);
+    });
+
+    importBtn.addEventListener('click', async () => {
+      if(!isAdmin()) return alert('Admin only');
+      const raw = prompt('Paste exported JSON here');
+      if(!raw) return;
+      try{
+        const parsed = JSON.parse(raw);
+        if(parsed.profile) localStorage.setItem('linkhub_profile_v3', JSON.stringify(parsed.profile));
+        if(Array.isArray(parsed.links)) {
+          // Optionally push imported links to server; for now we just show them locally
+          allLinks = parsed.links;
+          renderLinks(allLinks);
+        }
+        importBtn.textContent = 'Imported';
+        setTimeout(()=>importBtn.textContent='Import',1200);
+      }catch(e){
+        alert('Invalid JSON');
+      }
+    });
+
+    /***** Admin auth flow (Firebase) *****/
+    adminBtn.addEventListener('click', () => {
+      adminModal.classList.add('open');
+      adminModal.setAttribute('aria-hidden','false');
+      adminEmail.focus();
+    });
+    closeAdminBtn.addEventListener('click', () => {
+      adminModal.classList.remove('open');
+      adminModal.setAttribute('aria-hidden','true');
+    });
+
+    adminSignInBtn.addEventListener('click', async () => {
+      const email = adminEmail.value.trim();
+      const pw = adminPassword.value;
+      if(!email || !pw) return alert('Enter email and password');
+      try{
+        await auth.signInWithEmailAndPassword(email, pw);
+        sessionStorage.setItem('isAdmin','1');
+        adminModal.classList.remove('open');
+        adminModal.setAttribute('aria-hidden','true');
+        adminEmail.value = ''; adminPassword.value = '';
+        updateAdminUI();
+        alert('Signed in as admin');
+      }catch(err){
+        alert('Sign in failed: ' + err.message);
+      }
+    });
+
+    adminSignOutBtn.addEventListener('click', async () => {
+      await auth.signOut();
+      sessionStorage.removeItem('isAdmin');
+      updateAdminUI();
+      alert('Signed out');
+    });
+
+    auth.onAuthStateChanged(user => {
+      if(user) sessionStorage.setItem('isAdmin','1'); else sessionStorage.removeItem('isAdmin');
+      updateAdminUI();
+    });
+
+    /***** Keyboard shortcuts *****/
+    document.addEventListener('keydown', (e) => {
+      if(e.key.toLowerCase() === 'n' && !modal.classList.contains('open') && isAdmin()){
+        addBtn.click();
+      }
+      if(e.key === 'Escape' && modal.classList.contains('open')) closeEditor();
+    });
+
+    /***** Init *****/
+    (async function init(){
+      loadProfileToUI();
+      updateAdminUI();
+      await loadLinks();
+    })();
+  </script>
+</body>
+</html>
